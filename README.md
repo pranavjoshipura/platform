@@ -66,11 +66,11 @@ agentic-ai-platformengineering/
 ├── public/                          # Frontend static assets (Vite)
 ├── src/                             # Frontend source (React/TS)
 ├── supabase/   
-└── functions/        # Edge functions for AI agents
-    ├── workflow-diagnostic/
-    ├── release-readiness/
-    ├── multi-agent/
-    └── developer-portal/
+    ├── functions/                   # Edge functions for AI agents
+        ├── workflow-diagnostic/
+        ├── release-readiness/
+        ├── multi-agent/
+        └── developer-portal/
 ├── README.md
 ├── SETUP.md
 ├── components.json
@@ -78,7 +78,7 @@ agentic-ai-platformengineering/
 ├── index.html
 ├── package.json
 ├── tsconfig.app.json
-└── python/                          # Course Python demos & exercises (Alternative to Vite/React/TS)
+└── python/                          # Course Python demos & exercises (Alternative to Vite/React/TS. Not mandatory)
     ├── ai_client.py
     ├── exercises/
     │   ├── ai_client.py
