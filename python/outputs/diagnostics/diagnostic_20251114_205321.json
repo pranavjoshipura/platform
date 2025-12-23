@@ -1,0 +1,14 @@
+{
+  "timestamp": "2025-11-14T20:53:21.843238",
+  "provider": "mock",
+  "model": "mock-workshop",
+  "tokens_used": 80,
+  "cost_estimate": 0.0,
+  "context": {
+    "filename": "sample.log",
+    "workflow": "unknown",
+    "branch": "main"
+  },
+  "analysis": "\n            ## Build Failure Detected\n            \n            **Issue:** Dependency installation failed\n            **Package:** anthropic>=0.36.0\n            \n            **Possible Causes:**\n            1. Network connectivity issues\n            2. PyPI mirror problems\n            3. Version conflicts\n            \n            **Solutions:**\n            - Retry with `--no-cache-dir`\n            - Use a different PyPI mirror\n            - Pin specific versions in requirements.txt\n            ",
+  "raw_logs_preview": "Run python -m pytest tests/\n============================= test session starts ==============================\nplatform linux -- Python 3.11.0, pytest-8.0.0, pluggy-1.0.0\nrootdir: /home/runner/work/payment-service/payment-service\ncollected 15 items\n\ntests/test_api.py ....F                                                    [ 33%]\ntests/test_database.py .....                                               [ 66%]\ntests/test_utils.py .....                                                  [100%]\n\n====="
+}

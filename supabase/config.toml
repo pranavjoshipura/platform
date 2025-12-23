@@ -1,0 +1,13 @@
+project_id = "onhbqrmigfkiqgrassiv"
+
+[functions.workflow-diagnostic]
+verify_jwt = false
+
+[functions.release-readiness]
+verify_jwt = false
+
+[functions.multi-agent]
+verify_jwt = false
+
+[functions.developer-portal]
+verify_jwt = false

@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-12-22T17:31:44.560445",
+  "metrics": {
+    "code_coverage": 82.31892141264203,
+    "test_pass_rate": 96.15515996499838,
+    "performance_score": 86.95782332361182,
+    "security_score": 91.71156913557607,
+    "build_time": 137.6604933168773,
+    "bundle_size": 254.92585241289902,
+    "error_rate": 1.9523443645573488,
+    "response_time": 181.43357174063055
+  },
+  "thresholds": {
+    "min_coverage": 80.0,
+    "min_test_pass": 95.0,
+    "min_performance": 85.0,
+    "min_security": 90.0,
+    "max_build_time": 180.0,
+    "max_bundle_size": 300.0,
+    "max_error_rate": 1.0,
+    "max_response_time": 200.0
+  },
+  "violations": [
+    "Error rate 1.95% > 1.0%"
+  ],
+  "ai_analysis": "\n            ## Release Decision: ROLLBACK\n            \n            **Rationale:**\n            - Code coverage (72%) below threshold (80%)\n            - Performance regression detected (-15% throughput)\n            - 1 critical security vulnerability found\n            \n            **Risk Assessment:** HIGH\n            \n            **Recommendations:**\n            1. Fix critical security issue immediately\n            2. Investigate performance regression root cause\n            3. Increase test coverage for new code paths\n            \n            **Next Steps:**\n            - Trigger automated rollback\n            - Create incident ticket\n            - Schedule post-mortem\n            ",
+  "provider": "mock",
+  "model": "mock-workshop",
+  "cost_estimate": 0.0,
+  "context": {},
+  "decision": "ROLLBACK",
+  "decision_confidence": "HIGH"
+}
