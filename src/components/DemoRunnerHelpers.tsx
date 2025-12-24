@@ -1,3 +1,5 @@
+import * as React from "react";
+
 // Helper functions for DemoRunner component
 
 export function getDemoEndpoint(demoId: string): string {
@@ -137,7 +139,7 @@ export function formatDemoOutput(demoId: string, data: any): string {
   }
 }
 
-export function getInputPreview(demoId: string): JSX.Element {
+export function getInputPreview(demoId: string): React.ReactElement {
   switch (demoId) {
     case "workflow-diagnostic":
       return (

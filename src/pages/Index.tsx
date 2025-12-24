@@ -152,7 +152,14 @@ const Index = () => {
           {demos.map((demo) => (
             <DemoCard
               key={demo.id}
-              {...demo}
+              id={demo.id}
+              title={demo.title}
+              description={demo.description}
+              icon={demo.icon}
+              color={demo.color}
+              problem={demo.problem}
+              solution={demo.solution}
+              pythonFile={demo.pythonFile}
               onSelect={() => setSelectedDemo(demo.id)}
               isSelected={selectedDemo === demo.id}
             />
