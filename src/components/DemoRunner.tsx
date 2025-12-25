@@ -89,21 +89,28 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   };
 
   const saveRun = async (outputData: any, payload: any, mode: string) => {
+    console.log('Attempting to save run...', { demo_id: demo.id, mode });
     try {
-      const { error } = await supabase
+      const insertData = {
+        demo_id: demo.id,
+        demo_title: demo.title,
+        input_payload: payload,
+        output_data: outputData,
+        execution_mode: mode,
+        model_used: outputData.model_used || 'claude-sonnet-4-20250514'
+      };
+      console.log('Insert data:', insertData);
+      
+      const { data, error } = await supabase
         .from('demo_runs')
-        .insert({
-          demo_id: demo.id,
-          demo_title: demo.title,
-          input_payload: payload,
-          output_data: outputData,
-          execution_mode: mode,
-          model_used: outputData.model_used || 'claude-sonnet-4-20250514'
-        });
+        .insert(insertData)
+        .select();
 
       if (error) {
         console.error('Error saving run:', error);
+        toast.error('Failed to save run to history');
       } else {
+        console.log('Run saved successfully:', data);
         // Reload history to show new run
         loadPreviousRuns();
       }
