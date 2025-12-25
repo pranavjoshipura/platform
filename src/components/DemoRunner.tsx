@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,10 @@ import {
   Eye,
   Workflow,
   FileText,
-  Code
+  Code,
+  History,
+  Clock,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +26,17 @@ import CodeBlock from "./CodeBlock";
 import { getDemoEndpoint, getPayloadForDemo, formatDemoOutput, getInputPreview } from "./DemoRunnerHelpers";
 import WorkflowDiagram from "./WorkflowDiagram";
 import ReactMarkdown from "react-markdown";
+
+interface DemoRun {
+  id: string;
+  demo_id: string;
+  demo_title: string;
+  input_payload: any;
+  output_data: any;
+  execution_mode: string;
+  model_used: string;
+  created_at: string;
+}
 
 interface DemoRunnerProps {
   demo: {
@@ -41,11 +55,78 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   const [localApiKey, setLocalApiKey] = useState("");
   const [viewMode, setViewMode] = useState<"raw" | "formatted">("raw");
   const [demoPassword, setDemoPassword] = useState("");
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+  const [previousRuns, setPreviousRuns] = useState<DemoRun[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<DemoRun | null>(null);
 
   const pythonCode = generatePythonCode(demo.id);
 
+  // Load previous runs on mount
+  useEffect(() => {
+    loadPreviousRuns();
+  }, [demo.id]);
+
+  const loadPreviousRuns = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('demo_runs')
+        .select('*')
+        .eq('demo_id', demo.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error loading previous runs:', error);
+      } else {
+        setPreviousRuns(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading previous runs:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const saveRun = async (outputData: any, payload: any, mode: string) => {
+    try {
+      const { error } = await supabase
+        .from('demo_runs')
+        .insert({
+          demo_id: demo.id,
+          demo_title: demo.title,
+          input_payload: payload,
+          output_data: outputData,
+          execution_mode: mode,
+          model_used: outputData.model_used || 'claude-sonnet-4-20250514'
+        });
+
+      if (error) {
+        console.error('Error saving run:', error);
+      } else {
+        // Reload history to show new run
+        loadPreviousRuns();
+      }
+    } catch (error) {
+      console.error('Error saving run:', error);
+    }
+  };
+
+  const loadRun = (run: DemoRun) => {
+    setSelectedRun(run);
+    const formattedOutput = formatDemoOutput(run.demo_id, run.output_data);
+    setOutput([
+      `📂 Loaded saved run from ${new Date(run.created_at).toLocaleString()}`,
+      `🔧 Mode: ${run.execution_mode === 'cloud' ? 'Cloud Backend' : 'Local'}`,
+      `🤖 Model: Claude (${run.model_used || 'claude-sonnet-4-20250514'})`,
+      ``,
+      formattedOutput
+    ]);
+    toast.success("Loaded previous run");
+  };
+
   const runDemo = async () => {
+    setSelectedRun(null);
     if (executionMode === "local") {
       runLocalDemo();
     } else {
@@ -106,8 +187,17 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
       const data = await response.json();
       const result = data.content?.[0]?.text || 'No response generated';
       
-      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, ``, result]);
-      toast.success("Demo completed successfully!");
+      const outputData = {
+        result,
+        model_used: 'claude-sonnet-4-20250514',
+        timestamp: new Date().toISOString()
+      };
+
+      // Save the run
+      await saveRun(outputData, payload, 'local');
+      
+      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, `🤖 Model: Claude Sonnet 4`, ``, result]);
+      toast.success("Demo completed and saved!");
 
     } catch (error) {
       console.error('Error running local demo:', error);
@@ -131,7 +221,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
       const payload = getPayloadForDemo(demo.id);
       const endpoint = getDemoEndpoint(demo.id);
       
-      setOutput(prev => [...prev, `🔍 Analyzing with AI...`]);
+      setOutput(prev => [...prev, `🔍 Analyzing with Claude AI...`]);
       
       const { data, error } = await supabase.functions.invoke(endpoint, {
         body: { ...payload, accessPassword: demoPassword }
@@ -153,8 +243,11 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
         return;
       }
 
-      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, ``, formatDemoOutput(demo.id, data)]);
-      toast.success("Demo completed successfully!");
+      // Save the run
+      await saveRun(data, payload, 'cloud');
+
+      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, `🤖 Model: Claude (${data.model_used || 'claude-sonnet-4-20250514'})`, ``, formatDemoOutput(demo.id, data)]);
+      toast.success("Demo completed and saved!");
       
     } catch (error) {
       console.error('Error running demo:', error);
@@ -175,6 +268,11 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
     toast.success(`Downloaded ${demo.pythonFile}`);
   };
 
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -187,25 +285,151 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
         </Button>
       </div>
 
-      <Tabs defaultValue="inputs" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="history" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="history">
+            <History className="w-4 h-4 mr-2" />
+            History
+          </TabsTrigger>
           <TabsTrigger value="inputs">
             <Eye className="w-4 h-4 mr-2" />
             Inputs
           </TabsTrigger>
           <TabsTrigger value="workflow">
             <Workflow className="w-4 h-4 mr-2" />
-            Agentic Workflow
+            Workflow
           </TabsTrigger>
           <TabsTrigger value="run">
             <Terminal className="w-4 h-4 mr-2" />
-            Agent Execution
+            Run Demo
           </TabsTrigger>
           <TabsTrigger value="source">
             <Code2 className="w-4 h-4 mr-2" />
             Source
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="history" className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold flex items-center">
+                <History className="w-5 h-5 mr-2 text-primary" />
+                Previous Runs
+              </h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={loadPreviousRuns}
+                disabled={isLoadingHistory}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : previousRuns.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <History className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No previous runs found.</p>
+                <p className="text-sm">Run the demo to save results here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {previousRuns.map((run) => (
+                  <div
+                    key={run.id}
+                    className={`p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                      selectedRun?.id === run.id ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                    onClick={() => loadRun(run)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{formatTimestamp(run.created_at)}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              run.execution_mode === 'cloud' ? 'bg-primary/20 text-primary' : 'bg-secondary'
+                            }`}>
+                              {run.execution_mode === 'cloud' ? '☁️ Cloud' : '🖥️ Local'}
+                            </span>
+                            <span>Claude ({run.model_used || 'claude-sonnet-4-20250514'})</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm">
+                        Load
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {output.length > 0 && (
+            <Card className="p-6 border-2 border-primary/20">
+              <div className="flex items-center justify-between mb-4 sticky top-0 bg-card z-10 pb-2">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <Terminal className="w-5 h-5 mr-2 text-primary" />
+                  {selectedRun ? 'Loaded Output' : 'Latest Output'}
+                </h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === "raw" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("raw")}
+                  >
+                    <Code className="w-4 h-4 mr-1" />
+                    Raw
+                  </Button>
+                  <Button
+                    variant={viewMode === "formatted" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setViewMode("formatted")}
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Formatted
+                  </Button>
+                </div>
+              </div>
+              
+              {viewMode === "raw" ? (
+                <div className="bg-secondary rounded-lg p-4 font-mono text-sm space-y-1 max-h-[60vh] overflow-y-auto">
+                  {output.map((line, index) => (
+                    <div 
+                      key={index} 
+                      className="whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ 
+                        __html: line
+                          .replace(/<error>(.*?)<\/error>/g, '<span class="text-destructive font-bold">$1</span>')
+                          .replace(/<success>(.*?)<\/success>/g, '<span class="text-success font-bold">$1</span>')
+                          .replace(/<warning>(.*?)<\/warning>/g, '<span class="text-warning font-bold">$1</span>')
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-50 dark:bg-slate-900 border rounded-lg p-6 max-h-[60vh] overflow-y-auto">
+                  <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-li:text-slate-700 dark:prose-li:text-slate-300 prose-code:bg-slate-200 prose-code:text-slate-900 dark:prose-code:bg-slate-700 dark:prose-code:text-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-200 dark:prose-pre:bg-slate-800 prose-pre:text-slate-900 dark:prose-pre:text-slate-100">
+                    <ReactMarkdown>
+                      {output
+                        .join('\n')
+                        .replace(/<error>(.*?)<\/error>/g, '**❌ Error: $1**')
+                        .replace(/<success>(.*?)<\/success>/g, '**✅ $1**')
+                        .replace(/<warning>(.*?)<\/warning>/g, '**⚠️ $1**')}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
+        </TabsContent>
 
         <TabsContent value="inputs" className="space-y-4">
           <Card className="p-6">
@@ -376,7 +600,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
 function generatePromptForDemo(demoId: string, payload: any): string {
   switch (demoId) {
     case "workflow-diagnostic":
-      return `You are a platform engineering diagnostic agent. 
+      return `You are a platform engineering diagnostic agent powered by Claude. 
     
 A CI/CD workflow has failed with the following error:
 
@@ -390,10 +614,10 @@ Please provide:
 2. Step-by-step fix recommendations
 3. Prevention strategies for future occurrences
 
-Format your response as structured analysis with clear sections.`;
+Format your response as structured analysis with clear sections. Do not mention or reference any AI model names like Gemini in your response.`;
 
     case "release-readiness":
-      return `You are a release readiness evaluation agent.
+      return `You are a release readiness evaluation agent powered by Claude.
 
 Analyze the following quality metrics and provide a release decision:
 
@@ -411,10 +635,10 @@ Provide:
 3. Detailed rationale for each quality gate
 4. Risk assessment and mitigation strategies
 
-Be specific and actionable.`;
+Be specific and actionable. Do not mention or reference any AI model names like Gemini in your response.`;
 
     case "multi-agent":
-      return `You are coordinating multiple agents to balance cost and reliability.
+      return `You are coordinating multiple agents (powered by Claude) to balance cost and reliability.
 
 Infrastructure State:
 ${JSON.stringify(payload.infrastructureState, null, 2)}
@@ -423,10 +647,12 @@ Provide a comprehensive analysis covering:
 1. Cost optimization opportunities
 2. Reliability impact assessment
 3. Balanced recommendations
-4. Implementation plan`;
+4. Implementation plan
+
+Do not mention or reference any AI model names like Gemini in your response.`;
 
     case "developer-portal":
-      return `You are an intelligent developer portal agent.
+      return `You are an intelligent developer portal agent powered by Claude.
 
 Developer Context:
 ${JSON.stringify(payload.developerContext, null, 2)}
@@ -436,7 +662,9 @@ Developer Query: ${payload.query}
 Provide:
 1. Clear, actionable answer
 2. Code examples if applicable
-3. Next steps as a task list`;
+3. Next steps as a task list
+
+Do not mention or reference any AI model names like Gemini in your response.`;
 
     default:
       return "";
@@ -450,6 +678,7 @@ function generatePythonCode(demoId: string): string {
 # 2. Local Machine - Direct API calls from your local environment
 # 
 # To run this Python script on your local machine, you'll need: pip install anthropic
+# Model: Claude Sonnet 4 (claude-sonnet-4-20250514)
 
 `;
 
