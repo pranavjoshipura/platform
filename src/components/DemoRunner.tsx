@@ -298,8 +298,8 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
           </Card>
 
           {output.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <Card className="p-6 border-2 border-primary/20">
+              <div className="flex items-center justify-between mb-4 sticky top-0 bg-card z-10 pb-2">
                 <h3 className="text-lg font-semibold flex items-center">
                   <Terminal className="w-5 h-5 mr-2 text-primary" />
                   Output
@@ -325,7 +325,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
               </div>
               
               {viewMode === "raw" ? (
-                <div className="bg-secondary rounded-lg p-4 font-mono text-sm space-y-1 max-h-96 overflow-y-auto">
+                <div className="bg-secondary rounded-lg p-4 font-mono text-sm space-y-1 max-h-[60vh] overflow-y-auto">
                   {output.map((line, index) => (
                     <div 
                       key={index} 
@@ -340,7 +340,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-slate-50 dark:bg-slate-900 border rounded-lg p-6 max-h-96 overflow-y-auto">
+                <div className="bg-slate-50 dark:bg-slate-900 border rounded-lg p-6 max-h-[60vh] overflow-y-auto">
                   <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-li:text-slate-700 dark:prose-li:text-slate-300 prose-code:text-slate-900 dark:prose-code:text-slate-100">
                     <ReactMarkdown>
                       {output
