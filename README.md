@@ -194,6 +194,142 @@ npm run deploy
 *Look for the following URL (Obviously replace the subdomain with whatever appropriate)*
 https://achankra.github.io/agentic-ai-platformengineering
 
+## Tech Overview
+## Tech Overview
+
+This project demonstrates agentic AI patterns using a deliberately simple stack—no heavy frameworks, no complex orchestration layers. The goal is clarity: you should be able to read the code and understand exactly what's happening.
+
+### Architecture
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (UI)                            │
+│         Lovable-generated React + TypeScript + Vite             │
+│                  Hosted on GitHub Pages                         │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │ HTTPS API calls
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Supabase Edge Functions                       │
+│              (Deno runtime, TypeScript)                         │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────┐  │
+│  │ Diagnostic  │ │  Release    │ │ Multi-Agent │ │ Developer │  │
+│  │   Agent     │ │  Readiness  │ │Coordination │ │  Portal   │  │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └─────┬─────┘  │
+└─────────┼───────────────┼───────────────┼─────────────┼─────────┘
+          │               │               │             │
+          └───────────────┴───────┬───────┴─────────────┘
+                                  ▼
+                    ┌─────────────────────────┐
+                    │      Claude API         │
+                    │   (Anthropic Claude     │
+                    │    Sonnet 4)            │
+                    └─────────────────────────┘
+```
+
+### Component Breakdown
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | [Lovable](https://lovable.dev) | AI-generated React UI with shadcn/ui components. Rapid prototyping without hand-coding every component. |
+| **UI Framework** | React 18 + TypeScript | Type-safe frontend with modern hooks |
+| **Styling** | Tailwind CSS + shadcn/ui | Utility-first CSS with accessible component primitives |
+| **Build Tool** | Vite | Fast dev server and optimized production builds |
+| **Backend Functions** | Supabase Edge Functions | Serverless Deno runtime for API endpoints. Handles auth, secrets, and CORS without infrastructure management. |
+| **AI Provider** | Claude API (Anthropic) | Direct API calls to `claude-sonnet-4-20250514`. No LangChain, no abstraction layers—just prompts and responses. |
+| **Alternative Runtime** | Python 3.11+ | Standalone CLI implementations of each agent for local execution and workshops |
+| **Hosting** | GitHub Pages | Static site hosting for the frontend (free, simple, no server) |
+
+### Why No Agent Framework?
+
+You'll notice we're not using LangChain, LlamaIndex, CrewAI, or similar frameworks. This is intentional:
+
+- **Transparency** — You can read the prompt, see the API call, understand the response parsing. No magic.
+- **Fewer dependencies** — Less to break, fewer security surfaces, easier to audit.
+- **Learning-focused** — Frameworks abstract away the patterns we're trying to teach.
+- **Production-realistic** — Many production agent deployments use direct API calls for control and observability.
+
+The tradeoff is more boilerplate. For a workshop, that's a feature—you see everything.
+
+### Supabase Edge Functions
+
+Each agent is a standalone Edge Function in the `supabase/functions/` directory:
+```
+supabase/functions/
+├── workflow-diagnostic/index.ts    # Analyzes CI/CD failures
+├── release-readiness/index.ts      # Evaluates quality gates
+├── multi-agent/index.ts            # Cost optimizer + incident responder
+└── developer-portal/index.ts       # Personalized onboarding
+```
+
+**Why Supabase?**
+- Free tier handles workshop-scale traffic easily
+- Secrets management (API keys never touch the frontend)
+- Deno runtime = TypeScript with no build step
+- Deploys in seconds: `supabase functions deploy`
+
+### Python Implementations
+
+The `python/` directory contains equivalent implementations for each agent:
+```
+python/
+├── ai_client.py                    # Multi-provider client (Claude, OpenAI, mock)
+├── exercises/
+│   ├── ex1_diagnostic_agent.py     # Workflow diagnostics
+│   ├── ex2_quality_gates.py        # Release readiness
+│   ├── ex3_multi_agent.py          # Multi-agent coordination
+│   ├── ex4_developer_portal.py     # Developer onboarding
+│   └── ex5_starter_kit.py          # Template generator
+└── requirements.txt
+```
+
+**Why both TypeScript and Python?**
+- TypeScript: Production-style deployment via Supabase
+- Python: Workshop exercises, local experimentation, familiar to most platform engineers
+
+Both implementations use the same prompts and patterns—just different runtimes.
+
+### Lovable (Frontend Generation)
+
+The React frontend was generated using [Lovable](https://lovable.dev), an AI-powered app builder. This enabled rapid iteration on the demo UI without hand-coding every component.
+
+**What Lovable provided:**
+- Initial React + Vite + Tailwind scaffold
+- shadcn/ui component integration
+- Responsive layout and dark mode
+- Workflow visualization components
+
+**What we customized:**
+- Supabase function integration
+- Demo-specific flows and state management
+- GitHub Pages deployment configuration
+
+This approach mirrors real platform engineering: use AI to accelerate the undifferentiated work, focus human effort on the parts that matter.
+
+### Local Development
+```bash
+# Frontend
+npm install
+npm run dev                    # Runs at localhost:8080
+
+# Supabase Functions (local)
+supabase start
+supabase functions serve       # Local function emulator
+
+# Python exercises
+cd python
+pip install -r requirements.txt
+python exercises/ex1_diagnostic_agent.py
+```
+
+### Environment Variables
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `ANTHROPIC_API_KEY` | Supabase secrets / local `.env` | Claude API authentication |
+| `DEMO_ACCESS_PASSWORD` | Supabase secrets | Optional gate for live demos |
+| `SUPABASE_URL` | Frontend `.env` | Edge function endpoint |
+| `SUPABASE_ANON_KEY` | Frontend `.env` | Public API key for Supabase |
+
 ## License
 
 MIT
