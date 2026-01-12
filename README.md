@@ -195,7 +195,6 @@ npm run deploy
 https://achankra.github.io/agentic-ai-platformengineering
 
 ## Tech Overview
-## Tech Overview
 
 This project demonstrates agentic AI patterns using a deliberately simple stack—no heavy frameworks, no complex orchestration layers. The goal is clarity: you should be able to read the code and understand exactly what's happening.
 
@@ -203,7 +202,7 @@ This project demonstrates agentic AI patterns using a deliberately simple stack�
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Frontend (UI)                            │
-│         Lovable-generated React + TypeScript + Vite             │
+│                 React + TypeScript + Vite│
 │                  Hosted on GitHub Pages                         │
 └─────────────────────────┬───────────────────────────────────────┘
                           │ HTTPS API calls
@@ -248,7 +247,7 @@ You'll notice we're not using LangChain, LlamaIndex, CrewAI, or similar framewor
 - **Learning-focused** — Frameworks abstract away the patterns we're trying to teach.
 - **Production-realistic** — Many production agent deployments use direct API calls for control and observability.
 
-The tradeoff is more boilerplate. For a workshop, that's a feature—you see everything.
+The tradeoff is more boilerplate. 
 
 ### Supabase Edge Functions
 
@@ -262,9 +261,9 @@ supabase/functions/
 ```
 
 **Why Supabase?**
-- Free tier handles workshop-scale traffic easily
+- Free tier handles traffic easily. Can be scaled to production effectively
 - Secrets management (API keys never touch the frontend)
-- Deno runtime = TypeScript with no build step
+- Demo runtime = TypeScript with no build step
 - Deploys in seconds: `supabase functions deploy`
 
 ### Python Implementations
@@ -290,7 +289,7 @@ Both implementations use the same prompts and patterns—just different runtimes
 
 ### Lovable (Frontend Generation)
 
-The React frontend was generated using [Lovable](https://lovable.dev), an AI-powered app builder. This enabled rapid iteration on the demo UI without hand-coding every component.
+The React frontend was generated using [Lovable](https://lovable.dev), the popular AI-powered app builder. This enabled rapid iteration on the demo UI without hand-coding every component.
 
 **What Lovable provided:**
 - Initial React + Vite + Tailwind scaffold
@@ -299,6 +298,7 @@ The React frontend was generated using [Lovable](https://lovable.dev), an AI-pow
 - Workflow visualization components
 
 **What we customized:**
+- Typescript / Python agents
 - Supabase function integration
 - Demo-specific flows and state management
 - GitHub Pages deployment configuration
