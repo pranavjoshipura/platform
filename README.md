@@ -263,7 +263,7 @@ supabase/functions/
 **Why Supabase?**
 - Free tier handles traffic easily. Can be scaled to production effectively
 - Secrets management (API keys never touch the frontend)
-- Demo runtime = TypeScript with no build step
+- 'Deno' runtime = TypeScript with no build step
 - Deploys in seconds: `supabase functions deploy`
 
 ### Python Implementations
