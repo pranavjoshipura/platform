@@ -4,8 +4,6 @@ Interactive demos showcasing how AI agents can solve platform engineering challe
 
 ## Overview
 
-## What's Not Covered
-
 This course and repository focus specifically on **agentic patterns**—AI that reasons, plans, and acts. We intentionally skip some topics that are well-covered elsewhere or still too nascent:
 
 ### What Do We Cover?
