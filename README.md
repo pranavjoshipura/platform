@@ -8,14 +8,7 @@ Interactive demos showcasing how AI agents can solve platform engineering challe
 
 This course and repository focus specifically on **agentic patterns**—AI that reasons, plans, and acts. We intentionally skip some topics that are well-covered elsewhere or still too nascent:
 
-| Topic | Why It's Not Included |
-|-------|----------------------|
-| **RAG (Retrieval-Augmented Generation)** | Table stakes at this point. Every vendor has it, documentation is abundant, and it's not where the interesting platform engineering problems are anymore. |
-| **MCP Servers** | Promising protocol, but patterns aren't stable enough to teach as best practice yet. We'll revisit when the ecosystem matures. |
-| **Fully Autonomous Operations** | We focus on *scaffolding*—the trust infrastructure, guardrails, and feedback mechanisms that make autonomy possible later. Organizations that skip straight to autonomous systems fail. Trust is earned incrementally. |
-| **Replacing Platform Engineers** | Research consistently shows hybrid human-AI approaches outperform both fully manual and fully autonomous systems. Our demos emphasize AI that augments human judgment, not replaces it. |
-
-### What We Do Cover
+### What Do We Cover?
 
 - Diagnostic agents that investigate incidents
 - Release readiness agents that assess risk and make recommendations
@@ -23,6 +16,7 @@ This course and repository focus specifically on **agentic patterns**—AI that 
 - Developer portal agents for personalized onboarding
 - Progressive autonomy patterns and guardrail design
 - Production-ready code you can deploy Monday morning
+
 
 ### Demos
 
@@ -32,6 +26,17 @@ This project demonstrates four AI agent patterns for platform engineering:
 2. **Release Readiness Agent** - Evaluates quality gates to make intelligent release/rollback decisions with confidence scores
 3. **Multi-Agent Orchestration** - Cost optimizer and incident responder agents coordinate to balance efficiency with reliability
 4. **Developer Portal Agent** - AI-driven onboarding and self-service endpoint for intelligent developer guidance
+
+### What's not covered?
+
+
+| Topic | Why It's Not Included |
+|-------|----------------------|
+| **RAG (Retrieval-Augmented Generation)** | Table stakes at this point. Every vendor has it, documentation is abundant, and it's not where the interesting platform engineering problems are anymore. |
+| **MCP Servers** | Promising protocol, but patterns aren't stable enough to teach as best practice yet. We'll revisit when the ecosystem matures. |
+| **Fully Autonomous Operations** | We focus on *scaffolding*—the trust infrastructure, guardrails, and feedback mechanisms that make autonomy possible later. Organizations that skip straight to autonomous systems fail. Trust is earned incrementally. |
+| **Replacing Platform Engineers** | Research consistently shows hybrid human-AI approaches outperform both fully manual and fully autonomous systems. Our demos emphasize AI that augments human judgment, not replaces it. |
+
 
 
 ##  Learning Resources
