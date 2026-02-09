@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Play, 
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getPayloadForDemo, formatDemoOutput, getInputPreview } from "./DemoRunnerHelpers";
+import { getPayloadForDemo, formatDemoOutput, getInputPreview, getDemoEndpoint } from "./DemoRunnerHelpers";
 import WorkflowDiagram from "./WorkflowDiagram";
 import ReactMarkdown from "react-markdown";
 
@@ -42,16 +43,6 @@ interface DemoRunnerProps {
   onClose: () => void;
 }
 
-const getClaudeApiEndpoint = () => {
-  if (import.meta.env.VITE_ANTHROPIC_PROXY_URL) {
-    return import.meta.env.VITE_ANTHROPIC_PROXY_URL;
-  }
-  if (import.meta.env.DEV) {
-    return "/anthropic/v1/messages";
-  }
-  return "";
-};
-
 const CLAUDE_MODEL = "claude-3-haiku-20240307";
 const CLAUDE_MODEL_LABEL = "Claude 3 Haiku";
 
@@ -62,8 +53,9 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   const [previousRuns, setPreviousRuns] = useState<DemoRun[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedRun, setSelectedRun] = useState<DemoRun | null>(null);
-
-  const endpoint = getClaudeApiEndpoint();
+  const [accessPassword, setAccessPassword] = useState(() => {
+    return localStorage.getItem("demoAccessPassword") || "";
+  });
 
   // Load previous runs on mount
   useEffect(() => {
@@ -138,82 +130,68 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
 
   const runDemo = async () => {
     setSelectedRun(null);
-    runLocalDemo();
-  };
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+      toast.error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
+      return;
+    }
 
-  const runLocalDemo = async () => {
-    if (!endpoint) {
-      toast.error("No server-side proxy configured. Provide VITE_ANTHROPIC_PROXY_URL or run via the dev proxy.");
+    if (!accessPassword.trim()) {
+      toast.error("Access password required to run demos.");
       return;
     }
 
     setIsRunning(true);
     setOutput([
-      `🏠 Running locally with direct Claude API...`,
-      `📡 Connecting to Claude...`
+      `☁️ Running via Supabase Edge Function...`,
+      `📡 Sending request...`
     ]);
 
     try {
       const payload = getPayloadForDemo(demo.id);
-      const prompt = generatePromptForDemo(demo.id, payload);
+      const endpoint = getDemoEndpoint(demo.id);
 
-      console.log('[debug] endpoint:', endpoint);
+      localStorage.setItem("demoAccessPassword", accessPassword.trim());
 
-      setOutput(prev => [...prev, `🔍 Analyzing with ${CLAUDE_MODEL_LABEL}...`, `🔗 Endpoint: ${endpoint}`]);
+      setOutput(prev => [...prev, `🔍 Analyzing with ${CLAUDE_MODEL_LABEL}...`, `🔗 Function: ${endpoint}`]);
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-          'Content-Type': 'application/json',
+      const { data, error } = await supabase.functions.invoke(endpoint, {
+        body: {
+          ...payload,
+          accessPassword: accessPassword.trim(),
         },
-        body: JSON.stringify({
-          model: CLAUDE_MODEL,
-          max_tokens: 2048,
-          messages: [{ role: 'user', content: prompt }],
-        }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Claude API error:', response.status, errorText);
-
-        if (response.status === 429) {
-          toast.error('Rate limit exceeded');
-          setOutput(prev => [...prev, '❌ <error>Error: Rate limit exceeded</error>']);
-        } else if (response.status === 401) {
-          toast.error('Invalid API key');
-          setOutput(prev => [...prev, `❌ <error>Error: Invalid API key (${response.status})</error>`, `📋 Anthropic says: ${errorText}`]);
-        } else {
-          toast.error('Claude API error');
-          setOutput(prev => [...prev, `❌ <error>Error (${response.status}): ${errorText}</error>`]);
-        }
+      if (error) {
+        console.error('Edge function error:', error);
+        const errorMessage = error.message || 'Edge function error';
+        toast.error('Demo failed');
+        setOutput(prev => [...prev, `❌ <error>Error: ${errorMessage}</error>`]);
         setIsRunning(false);
         return;
       }
 
-      const data = await response.json();
-      const result = data.content?.[0]?.text || 'No response generated';
-      
-      const outputData = {
-        result,
-        model_used: CLAUDE_MODEL,
-        timestamp: new Date().toISOString()
-      };
+      if (data?.error) {
+        toast.error('Demo failed');
+        setOutput(prev => [...prev, `❌ <error>Error: ${data.error}</error>`]);
+        setIsRunning(false);
+        return;
+      }
+
+      const outputData = data || {};
+      const formattedOutput = formatDemoOutput(demo.id, outputData);
 
       // Save the run
-      await saveRun(outputData, payload, 'local');
+      await saveRun(outputData, payload, 'cloud');
       
-      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, `🤖 Model: ${CLAUDE_MODEL_LABEL}`, ``, result]);
+      setOutput(prev => [...prev, `✓ <success>Analysis complete!</success>`, `🤖 Model: ${CLAUDE_MODEL_LABEL}`, ``, formattedOutput]);
       toast.success("Demo completed and saved!");
 
     } catch (error) {
       console.error('Error running local demo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('Failed to fetch')) {
-        toast.error('Browser could not reach the proxy. Configure VITE_ANTHROPIC_PROXY_URL or use the dev proxy.');
-        setOutput(prev => [...prev, '❌ <error>Network error: browser cannot call Claude directly. Configure VITE_ANTHROPIC_PROXY_URL to a server-side proxy or run `npm run dev` (which adds a proxy).</error>']);
+        toast.error('Network error. Check Supabase Edge Function access.');
+        setOutput(prev => [...prev, '❌ <error>Network error: could not reach Supabase Edge Function.</error>']);
       } else {
         toast.error('An unexpected error occurred');
         setOutput(prev => [...prev, `❌ <error>Unexpected error: ${errorMessage}</error>`]);
@@ -400,12 +378,25 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
           <Card className="p-6">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Runs through a server-side proxy (no API keys in the browser).
+                Runs via Supabase Edge Functions (no API keys in the browser).
               </p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Demo Access Password</label>
+                <Input
+                  type="password"
+                  placeholder="Enter access password"
+                  value={accessPassword}
+                  onChange={(e) => setAccessPassword(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This password is required by the edge functions to prevent public abuse.
+                </p>
+              </div>
 
               <Button
                 onClick={runDemo}
-                disabled={isRunning || !endpoint}
+                disabled={isRunning || !accessPassword.trim()}
                 className="w-full"
                 size="lg"
               >
@@ -422,9 +413,9 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                 )}
               </Button>
 
-              {!endpoint && (
+              {!accessPassword.trim() && (
                 <p className="text-xs text-destructive">
-                  ⚠️ No proxy configured. Set VITE_ANTHROPIC_PROXY_URL or run `npm run dev`.
+                  ⚠️ Enter the access password to run demos.
                 </p>
               )}
             </div>
@@ -492,79 +483,5 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
     </div>
   );
 };
-
-function generatePromptForDemo(demoId: string, payload: any): string {
-  switch (demoId) {
-    case "workflow-diagnostic":
-      return `You are a platform engineering diagnostic agent powered by Claude. 
-    
-A CI/CD workflow has failed with the following error:
-
-${payload.errorLog}
-
-Workflow Context:
-${payload.workflowContext}
-
-Please provide:
-1. Root cause analysis
-2. Step-by-step fix recommendations
-3. Prevention strategies for future occurrences
-
-Format your response as structured analysis with clear sections. Do not mention or reference any AI model names like Gemini in your response.`;
-
-    case "release-readiness":
-      return `You are a release readiness evaluation agent powered by Claude.
-
-Analyze the following quality metrics and provide a release decision:
-
-${JSON.stringify(payload.qualityMetrics, null, 2)}
-
-Quality Gates:
-- Test Coverage: Minimum 80% (Critical)
-- Performance: Response time < 200ms (High)
-- Security Scan: No critical vulnerabilities (Critical)
-- Code Quality: Maintainability score > 70 (Medium)
-
-Provide:
-1. Overall release recommendation (Deploy/Rollback/Hold)
-2. Confidence score (0-100%)
-3. Detailed rationale for each quality gate
-4. Risk assessment and mitigation strategies
-
-Be specific and actionable. Do not mention or reference any AI model names like Gemini in your response.`;
-
-    case "multi-agent":
-      return `You are coordinating multiple agents (powered by Claude) to balance cost and reliability.
-
-Infrastructure State:
-${JSON.stringify(payload.infrastructureState, null, 2)}
-
-Provide a comprehensive analysis covering:
-1. Cost optimization opportunities
-2. Reliability impact assessment
-3. Balanced recommendations
-4. Implementation plan
-
-Do not mention or reference any AI model names like Gemini in your response.`;
-
-    case "developer-portal":
-      return `You are an intelligent developer portal agent powered by Claude.
-
-Developer Context:
-${JSON.stringify(payload.developerContext, null, 2)}
-
-Developer Query: ${payload.query}
-
-Provide:
-1. Clear, actionable answer
-2. Code examples if applicable
-3. Next steps as a task list
-
-Do not mention or reference any AI model names like Gemini in your response.`;
-
-    default:
-      return "";
-  }
-}
 
 export default DemoRunner;
