@@ -3,9 +3,19 @@ import {
   Terminal, 
   GitBranch, 
   Shield, 
-  Users
+  Users,
+  ChevronDown
 } from "lucide-react";
-import DemoCard from "@/components/DemoCard";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import DemoRunner from "@/components/DemoRunner";
 
 const Index = () => {
@@ -115,22 +125,45 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
-          {demos.map((demo) => (
-            <DemoCard
-              key={demo.id}
-              id={demo.id}
-              title={demo.title}
-              description={demo.description}
-              icon={demo.icon}
-              color={demo.color}
-              problem={demo.problem}
-              solution={demo.solution}
-              pythonFile={demo.pythonFile}
-              onSelect={() => setSelectedDemo(demo.id)}
-              isSelected={selectedDemo === demo.id}
-            />
-          ))}
+        <div className="flex flex-col items-start gap-4 mb-16">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" className="gap-2">
+                AI Demos
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  Platform Engineering
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-72">
+                  {demos.map((demo) => (
+                    <DropdownMenuItem
+                      key={demo.id}
+                      onSelect={() => {
+                        setSelectedDemo(demo.id);
+                        setTimeout(() => {
+                          document
+                            .getElementById("demo-runner-section")
+                            ?.scrollIntoView({ behavior: "smooth" });
+                        }, 100);
+                      }}
+                    >
+                      {demo.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {selectedDemo && (
+            <p className="text-sm text-muted-foreground">
+              Selected: {demos.find((d) => d.id === selectedDemo)?.title}
+            </p>
+          )}
         </div>
       </section>
 
