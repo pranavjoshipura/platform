@@ -49,7 +49,7 @@ const getClaudeApiEndpoint = () => {
   if (import.meta.env.DEV) {
     return "/anthropic/v1/messages";
   }
-  return "https://api.anthropic.com/v1/messages";
+  return "";
 };
 
 const CLAUDE_MODEL = "claude-3-haiku-20240307";
@@ -63,7 +63,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedRun, setSelectedRun] = useState<DemoRun | null>(null);
 
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
+  const endpoint = getClaudeApiEndpoint();
 
   // Load previous runs on mount
   useEffect(() => {
@@ -142,12 +142,10 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   };
 
   const runLocalDemo = async () => {
-    if (!apiKey) {
-      toast.error("API key not configured. Please set VITE_ANTHROPIC_API_KEY in your .env file.");
+    if (!endpoint) {
+      toast.error("No server-side proxy configured. Provide VITE_ANTHROPIC_PROXY_URL or run via the dev proxy.");
       return;
     }
-
-    const trimmedKey = apiKey.trim();
 
     setIsRunning(true);
     setOutput([
@@ -159,16 +157,13 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
       const payload = getPayloadForDemo(demo.id);
       const prompt = generatePromptForDemo(demo.id, payload);
 
-      const endpoint = getClaudeApiEndpoint();
       console.log('[debug] endpoint:', endpoint);
-      console.log('[debug] key length:', trimmedKey.length, 'starts:', trimmedKey.slice(0, 12));
 
-      setOutput(prev => [...prev, `🔍 Analyzing with ${CLAUDE_MODEL_LABEL}...`, `🔗 Endpoint: ${endpoint}`, `🔑 Key: ${trimmedKey.slice(0, 12)}...`]);
+      setOutput(prev => [...prev, `🔍 Analyzing with ${CLAUDE_MODEL_LABEL}...`, `🔗 Endpoint: ${endpoint}`]);
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'x-api-key': trimmedKey,
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true',
           'Content-Type': 'application/json',
@@ -217,8 +212,8 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
       console.error('Error running local demo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('Failed to fetch')) {
-        toast.error('Browser could not reach Claude. Run through the dev proxy or provide VITE_ANTHROPIC_PROXY_URL.');
-        setOutput(prev => [...prev, '❌ <error>Network error: browser cannot call Claude directly. Run `npm run dev` (which adds a proxy) or configure VITE_ANTHROPIC_PROXY_URL to a server-side proxy.</error>']);
+        toast.error('Browser could not reach the proxy. Configure VITE_ANTHROPIC_PROXY_URL or use the dev proxy.');
+        setOutput(prev => [...prev, '❌ <error>Network error: browser cannot call Claude directly. Configure VITE_ANTHROPIC_PROXY_URL to a server-side proxy or run `npm run dev` (which adds a proxy).</error>']);
       } else {
         toast.error('An unexpected error occurred');
         setOutput(prev => [...prev, `❌ <error>Unexpected error: ${errorMessage}</error>`]);
@@ -405,12 +400,12 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
           <Card className="p-6">
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Runs locally using Claude API via your configured API key.
+                Runs through a server-side proxy (no API keys in the browser).
               </p>
 
               <Button
                 onClick={runDemo}
-                disabled={isRunning || !apiKey}
+                disabled={isRunning || !endpoint}
                 className="w-full"
                 size="lg"
               >
@@ -427,9 +422,9 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                 )}
               </Button>
 
-              {!apiKey && (
+              {!endpoint && (
                 <p className="text-xs text-destructive">
-                  ⚠️ No API key found. Set VITE_ANTHROPIC_API_KEY in your .env file.
+                  ⚠️ No proxy configured. Set VITE_ANTHROPIC_PROXY_URL or run `npm run dev`.
                 </p>
               )}
             </div>
