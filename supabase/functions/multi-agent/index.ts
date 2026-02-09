@@ -3,6 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CLAUDE_MODEL = 'claude-3-haiku-20240307';
+
 async function callClaude(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -12,7 +14,7 @@ async function callClaude(prompt: string, apiKey: string): Promise<string> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: CLAUDE_MODEL,
       max_tokens: 2048,
       messages: [
         { role: 'user', content: prompt }
@@ -133,7 +135,7 @@ Balance cost savings with reliability requirements.`;
         reliability_assessment: reliabilityAssessment,
         final_recommendation: finalRecommendation,
         timestamp: new Date().toISOString(),
-        model_used: 'claude-sonnet-4-20250514'
+        model_used: CLAUDE_MODEL
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

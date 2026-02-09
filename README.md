@@ -221,7 +221,7 @@ This project demonstrates agentic AI patterns using a deliberately simple stack�
                     ┌─────────────────────────┐
                     │      Claude API         │
                     │   (Anthropic Claude     │
-                    │    Sonnet 4)            │
+                    │    3 Haiku)             │
                     └─────────────────────────┘
 ```
 
@@ -234,7 +234,7 @@ This project demonstrates agentic AI patterns using a deliberately simple stack�
 | **Styling** | Tailwind CSS + shadcn/ui | Utility-first CSS with accessible component primitives |
 | **Build Tool** | Vite | Fast dev server and optimized production builds |
 | **Backend Functions** | Supabase Edge Functions | Serverless Deno runtime for API endpoints. Handles auth, secrets, and CORS without infrastructure management. |
-| **AI Provider** | Claude API (Anthropic) | Direct API calls to `claude-sonnet-4-20250514`. No LangChain, no abstraction layers—just prompts and responses. |
+| **AI Provider** | Claude API (Anthropic) | Direct API calls to `claude-3-haiku-20240307`. No LangChain, no abstraction layers—just prompts and responses. |
 | **Alternative Runtime** | Python 3.11+ | Standalone CLI implementations of each agent for local execution and workshops |
 | **Hosting** | GitHub Pages | Static site hosting for the frontend (free, simple, no server) |
 

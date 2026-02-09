@@ -13,10 +13,18 @@ export default defineConfig(async ({ mode }) => {
   }
 
   return {
-    base: "/",
+    base: "/agentic-ai-platformengineering/",
     server: {
       host: "::",
       port: 8080,
+      proxy: {
+        "/anthropic": {
+          target: "https://api.anthropic.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/anthropic/, ""),
+        },
+      },
     },
     plugins,
     resolve: {

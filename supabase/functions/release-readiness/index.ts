@@ -3,6 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CLAUDE_MODEL = 'claude-3-haiku-20240307';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -69,7 +71,7 @@ Be specific and actionable.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: CLAUDE_MODEL,
         max_tokens: 2048,
         messages: [
           { role: 'user', content: prompt }
@@ -110,7 +112,7 @@ Be specific and actionable.`;
       JSON.stringify({
         evaluation,
         timestamp: new Date().toISOString(),
-        model_used: 'claude-sonnet-4-20250514'
+        model_used: CLAUDE_MODEL
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

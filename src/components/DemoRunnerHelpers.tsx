@@ -2,6 +2,8 @@ import * as React from "react";
 
 // Helper functions for DemoRunner component
 
+const DEFAULT_MODEL = "claude-3-haiku-20240307";
+
 export function getDemoEndpoint(demoId: string): string {
   const endpoints: Record<string, string> = {
     "workflow-diagnostic": "workflow-diagnostic",
@@ -115,7 +117,7 @@ Last successful run: 2 days ago`
 export function formatDemoOutput(demoId: string, data: any): string {
   if (!data) return "No output received";
 
-  const modelInfo = data.model_used || "claude-sonnet-4-20250514";
+  const modelInfo = data.model_used || DEFAULT_MODEL;
 
   switch (demoId) {
     case "workflow-diagnostic":
