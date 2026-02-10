@@ -1,5 +1,9 @@
 import { Card } from "@/components/ui/card";
-import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useRef, useState } from "react";
+import { Edit, Eye, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 interface WorkflowDiagramProps {
   demoId: string;
@@ -7,6 +11,9 @@ interface WorkflowDiagramProps {
 
 const WorkflowDiagram = ({ demoId }: WorkflowDiagramProps) => {
   const mermaidRef = useRef<HTMLDivElement>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [customDiagram, setCustomDiagram] = useState<string>("");
+  const [editedDiagram, setEditedDiagram] = useState<string>("");
 
   const diagrams: Record<string, { title: string; diagram: string; legend: string[] }> = {
     "workflow-diagnostic": {
@@ -130,57 +137,97 @@ const WorkflowDiagram = ({ demoId }: WorkflowDiagramProps) => {
       ]
     },
     "developer-portal": {
-      title: "Developer Portal Agent Flow",
+      title: "AI Copilot for Developers",
       diagram: `graph TD
-    A[Developer Question] -->|Query| B[🤖 Portal Agent]
-    B -->|Automatic| C[Load Developer Context]
-    C --> D[Experience Level]
-    C --> E[Tech Stack]
-    C --> F[Team Info]
-    C --> G[Past Questions]
-    
-    D --> H[Claude API Analysis]
-    E --> H
-    F --> H
-    G --> H
-    
-    H -->|AI Reasoning| I[Generate Personalized Answer]
-    I --> J[Code Examples]
-    I --> K[Documentation Links]
-    I --> L[Task List]
-    I --> M[Related Topics]
-    
-    J --> N[Deliver Response]
-    K --> N
-    L --> N
-    M --> N
-    
-    N -->|Automatic| O[Developer Receives Help]
-    O -->|Optional| P[Follow-up Questions]
-    P --> B
-    
-    O -->|Manual Action| Q[Developer Implements Solution]
-    Q -->|Success| R[✅ Task Complete]
-    Q -->|Issues| P
-    
+    A[👤 Developer Asks Question] -->|Query Submitted| B[🤖 AI Copilot]
+    B -->|Instant| C{Analyze Context}
+
+    C -->|Profile| D[Experience Level<br/>Junior/Mid/Senior]
+    C -->|Tech Stack| E[Tech Stack<br/>Python/Kotlin/Swift/React]
+    C -->|Team| F[Team Context<br/>Backend/Mobile/Platform]
+
+    D --> G[🧠 AI Processing]
+    E --> G
+    F --> G
+
+    G -->|Smart Analysis| H{Question Type}
+
+    H -->|How-To| I[📝 Step-by-Step Guide]
+    H -->|Debugging| J[🐛 Root Cause + Fix]
+    H -->|Best Practice| K[⭐ Recommendations]
+    H -->|Code Review| L[💡 Code Suggestions]
+
+    I --> M[✨ Personalized Response]
+    J --> M
+    K --> M
+    L --> M
+
+    M --> N[Code Examples<br/>Tailored to Tech Stack]
+    M --> O[Runnable Commands]
+    M --> P[Links to Docs]
+    M --> Q[Next Steps Checklist]
+
+    N --> R[Developer Implements]
+    O --> R
+    P --> R
+    Q --> R
+
+    R -->|Works| S[✅ Problem Solved]
+    R -->|Stuck| T[Ask Follow-up]
+    T --> B
+
+    S --> U[Knowledge Retained<br/>Team Velocity ⬆]
+
     style B fill:#4ade80,color:#0f172a
-    style H fill:#60a5fa,color:#0f172a
-    style I fill:#8b5cf6,color:#0f172a
-    style Q fill:#fbbf24,color:#0f172a
-    
-    S[Before: 2-day wait for platform team, context switching] -.->|vs| T[After: Instant AI help, self-service onboarding]`,
+    style G fill:#60a5fa,color:#0f172a
+    style M fill:#8b5cf6,color:#0f172a
+    style R fill:#fbbf24,color:#0f172a
+    style S fill:#10b981,color:#fff
+
+    V[❌ Before: Wait hours/days for senior dev] -.->|vs| W[✅ After: Instant AI guidance, self-serve]`,
       legend: [
-        "🟢 Green: Automatic context loading & analysis",
-        "🔵 Blue: Claude-powered personalization",
-        "🟣 Purple: Tailored response generation",
-        "🟡 Yellow: Developer implements solution",
-        "🔄 Loop: Conversational follow-ups supported",
-        "⚡ Impact: 2-day wait → instant response"
+        "🤖 AI Copilot: Acts as your senior developer pair",
+        "🧠 Context-Aware: Adapts to your experience & tech stack",
+        "✨ Personalized: Answers tailored to your exact situation",
+        "🔄 Interactive: Ask follow-ups, refine solutions",
+        "📈 Impact: 10x faster onboarding, zero wait time",
+        "💡 Smart: Debugging, how-tos, best practices, code review"
       ]
     }
   };
 
   const config = diagrams[demoId] || diagrams["workflow-diagnostic"];
+  const defaultDiagram = config.diagram;
+  const currentDiagram = customDiagram || defaultDiagram;
+
+  // Initialize edited diagram when switching demos
+  useEffect(() => {
+    setCustomDiagram("");
+    setEditedDiagram(defaultDiagram);
+    setIsEditMode(false);
+  }, [demoId]);
+
+  const handleSaveDiagram = () => {
+    try {
+      setCustomDiagram(editedDiagram);
+      setIsEditMode(false);
+      toast.success("Workflow updated! Rendering...");
+    } catch (error) {
+      toast.error("Invalid diagram syntax");
+    }
+  };
+
+  const handleResetDiagram = () => {
+    setCustomDiagram("");
+    setEditedDiagram(defaultDiagram);
+    setIsEditMode(false);
+    toast.success("Workflow reset to default");
+  };
+
+  const handleEditDiagram = () => {
+    setEditedDiagram(currentDiagram);
+    setIsEditMode(true);
+  };
 
   useEffect(() => {
     const renderMermaid = async () => {
@@ -209,9 +256,9 @@ const WorkflowDiagram = ({ demoId }: WorkflowDiagramProps) => {
         
         // Generate unique ID
         const uniqueId = `mermaid-${demoId}-${Date.now()}`;
-        
+
         // Render the diagram
-        const { svg } = await mermaid.render(uniqueId, config.diagram);
+        const { svg } = await mermaid.render(uniqueId, currentDiagram);
         
         if (mermaidRef.current) {
           mermaidRef.current.innerHTML = svg;
@@ -232,20 +279,71 @@ const WorkflowDiagram = ({ demoId }: WorkflowDiagramProps) => {
     // Small delay to ensure component is mounted
     const timeoutId = setTimeout(renderMermaid, 100);
     return () => clearTimeout(timeoutId);
-  }, [demoId, config.diagram]);
+  }, [demoId, currentDiagram]);
 
   return (
     <Card className="p-6 space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-2">{config.title}</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Visualizing the agent workflow: automatic triggers, AI reasoning, and manual interventions
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-xl font-semibold mb-2">{config.title}</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Visualizing the agent workflow: automatic triggers, AI reasoning, and manual interventions
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {!isEditMode ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleEditDiagram}>
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+              {customDiagram && (
+                <Button variant="outline" size="sm" onClick={handleResetDiagram}>
+                  <RotateCcw className="w-4 h-4 mr-1" />
+                  Reset
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <Button variant="default" size="sm" onClick={handleSaveDiagram}>
+                <Eye className="w-4 h-4 mr-1" />
+                Preview
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsEditMode(false)}>
+                Cancel
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-6 overflow-x-auto">
-        <div ref={mermaidRef} className="mermaid" />
-      </div>
+      {isEditMode ? (
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Edit the Mermaid diagram syntax below. See{" "}
+            <a
+              href="https://mermaid.js.org/syntax/flowchart.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Mermaid documentation
+            </a>{" "}
+            for syntax help.
+          </p>
+          <Textarea
+            value={editedDiagram}
+            onChange={(e) => setEditedDiagram(e.target.value)}
+            className="font-mono text-xs min-h-[400px]"
+            placeholder="Enter Mermaid diagram syntax..."
+          />
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-lg p-6 overflow-x-auto">
+          <div ref={mermaidRef} className="mermaid" />
+        </div>
+      )}
 
       <div className="space-y-2">
         <h4 className="font-semibold text-sm">Legend:</h4>

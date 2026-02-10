@@ -18,18 +18,27 @@ export function getPayloadForDemo(demoId: string): any {
   switch (demoId) {
     case "workflow-diagnostic":
       return {
-        errorLog: `Error: Terraform apply failed
-│ Error: Error creating S3 bucket: BucketAlreadyExists: 
-│ The requested bucket name is not available
-│ 
-│   with aws_s3_bucket.data_lake,
-│   on main.tf line 15, in resource "aws_s3_bucket" "data_lake":
-│   15: resource "aws_s3_bucket" "data_lake" {`,
-        workflowContext: `Repository: infrastructure/terraform
+        errorLog: `Error: API service deployment failed
+│ Error: Container failed to start
+│
+│ 2025-01-15 10:23:45 ERROR [main] Database connection failed
+│ 2025-01-15 10:23:45 ERROR Connection to postgres://db:5432/app_db refused
+│ 2025-01-15 10:23:45 ERROR Could not connect to database: Connection refused
+│ 2025-01-15 10:23:45 FATAL Exiting due to database connection failure
+│
+│ Container exit code: 1`,
+        workflowContext: `Repository: backend/api-service
 Branch: main
 Triggered by: push event
 Environment: production
-Last successful run: 2 days ago`
+Last successful run: 2 days ago`,
+        developerContext: {
+          name: "Kevin Johnson",
+          experience_level: "intermediate",
+          team: "backend",
+          tech_stack: ["Python", "Kubernetes", "PostgreSQL"],
+          role: "Software Engineer"
+        }
       };
 
     case "release-readiness":
@@ -101,7 +110,7 @@ Last successful run: 2 days ago`
       return {
         query: "How do I deploy a new microservice to our staging environment?",
         developerContext: {
-          name: "Alex",
+          name: "Kevin Johnson",
           experience_level: "intermediate",
           team: "backend",
           tech_stack: ["Python", "Kubernetes", "PostgreSQL"],
@@ -147,23 +156,35 @@ export function getInputPreview(demoId: string): React.ReactElement {
       return (
         <div className="space-y-4">
           <div>
+            <h4 className="font-semibold text-sm mb-2">👤 Developer Context</h4>
+            <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+              <div><strong>Name:</strong> Kevin Johnson</div>
+              <div><strong>Experience:</strong> Intermediate</div>
+              <div><strong>Team:</strong> Backend Engineering</div>
+              <div><strong>Tech Stack:</strong> Python, Kubernetes, PostgreSQL</div>
+              <div><strong>Role:</strong> Software Engineer</div>
+            </div>
+          </div>
+          <div>
             <h4 className="font-semibold text-sm mb-2">📋 Failed CI/CD Workflow</h4>
             <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
               <pre className="text-sm text-foreground whitespace-pre-wrap">
-{`Error: Terraform apply failed
-│ Error: Error creating S3 bucket: BucketAlreadyExists: 
-│ The requested bucket name is not available
-│ 
-│   with aws_s3_bucket.data_lake,
-│   on main.tf line 15, in resource "aws_s3_bucket" "data_lake":
-│   15: resource "aws_s3_bucket" "data_lake" {`}
+{`Error: API service deployment failed
+│ Error: Container failed to start
+│
+│ 2025-01-15 10:23:45 ERROR [main] Database connection failed
+│ 2025-01-15 10:23:45 ERROR Connection to postgres://db:5432/app_db refused
+│ 2025-01-15 10:23:45 ERROR Could not connect to database: Connection refused
+│ 2025-01-15 10:23:45 FATAL Exiting due to database connection failure
+│
+│ Container exit code: 1`}
               </pre>
             </div>
           </div>
           <div>
             <h4 className="font-semibold text-sm mb-2">🔍 Workflow Context</h4>
             <div className="bg-muted rounded-lg p-4 space-y-1 text-sm">
-              <div><strong>Repository:</strong> infrastructure/terraform</div>
+              <div><strong>Repository:</strong> backend/api-service</div>
               <div><strong>Branch:</strong> main</div>
               <div><strong>Triggered by:</strong> push event</div>
               <div><strong>Environment:</strong> production</div>
@@ -267,7 +288,7 @@ export function getInputPreview(demoId: string): React.ReactElement {
           <div>
             <h4 className="font-semibold text-sm mb-2">👤 Developer Context</h4>
             <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
-              <div><strong>Name:</strong> Alex</div>
+              <div><strong>Name:</strong> Kevin Johnson</div>
               <div><strong>Experience:</strong> Intermediate</div>
               <div><strong>Team:</strong> Backend Engineering</div>
               <div><strong>Tech Stack:</strong> Python, Kubernetes, PostgreSQL</div>

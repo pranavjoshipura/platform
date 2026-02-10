@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Play, 
-  X, 
-  Terminal, 
+import {
+  Play,
+  X,
+  Terminal,
   Loader2,
   Eye,
   Workflow,
@@ -13,13 +14,18 @@ import {
   Code,
   History,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  Sparkles,
+  Bot,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getPayloadForDemo, formatDemoOutput, getInputPreview } from "./DemoRunnerHelpers";
 import WorkflowDiagram from "./WorkflowDiagram";
 import ReactMarkdown from "react-markdown";
+import DynamicDemoInputs from "./DynamicDemoInputs";
 
 interface DemoRun {
   id: string;
@@ -40,10 +46,25 @@ interface DemoRunnerProps {
     pythonFile: string;
   };
   onClose: () => void;
+  userRole?: 'admin' | 'developer';
+  developerProfileId?: string;
 }
 
 const CLAUDE_MODEL = "claude-3-haiku-20240307";
 const CLAUDE_MODEL_LABEL = "Claude 3 Haiku";
+
+// Fallback UUID generator for environments where crypto.randomUUID is not available
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback implementation
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 const getClaudeApiEndpoint = () => {
   if (import.meta.env.VITE_ANTHROPIC_PROXY_URL) {
@@ -55,13 +76,18 @@ const getClaudeApiEndpoint = () => {
   return "https://api.anthropic.com/v1/messages";
 };
 
-const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
+const DemoRunner = ({ demo, onClose, userRole = 'admin', developerProfileId }: DemoRunnerProps) => {
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"raw" | "formatted">("raw");
   const [previousRuns, setPreviousRuns] = useState<DemoRun[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedRun, setSelectedRun] = useState<DemoRun | null>(null);
+  const [dynamicPayload, setDynamicPayload] = useState<any>(getPayloadForDemo(demo.id));
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isDeveloper = userRole === 'developer';
+  const isAdmin = userRole === 'admin';
 
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
   const endpoint = getClaudeApiEndpoint();
@@ -97,29 +123,59 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
   const loadPreviousRuns = async () => {
     setIsLoadingHistory(true);
     if (!supabaseConfigured) {
-      setPreviousRuns(getLocalRuns());
+      let runs = getLocalRuns();
+      // Filter by developer profile if applicable
+      if (isDeveloper && developerProfileId) {
+        runs = runs.filter(run =>
+          run.input_payload?.developerContext?.name === developerProfileId ||
+          run.demo_id === 'developer-portal'
+        );
+      }
+      setPreviousRuns(runs);
       setIsLoadingHistory(false);
       return;
     }
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('demo_runs')
         .select('*')
-        .eq('demo_id', demo.id)
+        .eq('demo_id', demo.id);
+
+      // Filter by developer profile for non-admin users
+      if (isDeveloper && developerProfileId) {
+        // For developers, only show their own runs
+        query = query.or(`input_payload->developerContext->>name.eq.${developerProfileId},demo_id.eq.developer-portal`);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) {
         console.error('Error loading previous runs:', error);
         toast.error('History unavailable. Using local history.');
-        setPreviousRuns(getLocalRuns());
+        let runs = getLocalRuns();
+        if (isDeveloper && developerProfileId) {
+          runs = runs.filter(run =>
+            run.input_payload?.developerContext?.name === developerProfileId ||
+            run.demo_id === 'developer-portal'
+          );
+        }
+        setPreviousRuns(runs);
       } else {
         setPreviousRuns(data || []);
       }
     } catch (error) {
       console.error('Error loading previous runs:', error);
       toast.error('History unavailable. Using local history.');
-      setPreviousRuns(getLocalRuns());
+      let runs = getLocalRuns();
+      if (isDeveloper && developerProfileId) {
+        runs = runs.filter(run =>
+          run.input_payload?.developerContext?.name === developerProfileId ||
+          run.demo_id === 'developer-portal'
+        );
+      }
+      setPreviousRuns(runs);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -140,7 +196,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
 
       if (!supabaseConfigured) {
         const localRun: DemoRun = {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           demo_id: insertData.demo_id,
           demo_title: insertData.demo_title,
           input_payload: insertData.input_payload,
@@ -162,7 +218,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
         console.error('Error saving run:', error);
         toast.error('Failed to save run to history. Using local history.');
         const localRun: DemoRun = {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           demo_id: insertData.demo_id,
           demo_title: insertData.demo_title,
           input_payload: insertData.input_payload,
@@ -181,7 +237,7 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
       console.error('Error saving run:', error);
       toast.error('Failed to save run to history. Using local history.');
       const localRun: DemoRun = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         demo_id: demo.id,
         demo_title: demo.title,
         input_payload: payload,
@@ -218,16 +274,14 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
     const trimmedKey = apiKey.trim();
 
     setOutput([
-      `🏠 Running locally with direct Claude API...`,
-      `📡 Connecting to Claude...`
+      `🤖 AI Copilot activated...`,
+      `📡 Connecting to AI...`
     ]);
 
     try {
-      const payload = getPayloadForDemo(demo.id);
+      const payload = dynamicPayload;
 
       console.log('[debug] endpoint:', endpoint);
-
-      setOutput(prev => [...prev, `🔍 Analyzing with ${CLAUDE_MODEL_LABEL}...`, `🔗 Endpoint: ${endpoint}`, `🔑 Key: ${trimmedKey.slice(0, 12)}...`]);
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -297,6 +351,37 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
     return date.toLocaleString();
   };
 
+  const getRunContext = (run: DemoRun): string => {
+    const payload = run.input_payload;
+    if (run.demo_id === "developer-portal") {
+      return payload?.query || payload?.developerContext?.name || "No query available";
+    } else if (run.demo_id === "workflow-diagnostic") {
+      const errorPreview = payload?.errorLog?.split('\n')[0] || "Error log";
+      return errorPreview.substring(0, 60) + (errorPreview.length > 60 ? "..." : "");
+    } else if (run.demo_id === "release-readiness") {
+      const coverage = payload?.qualityMetrics?.test_coverage || "N/A";
+      return `Test coverage: ${coverage}%`;
+    } else if (run.demo_id === "multi-agent") {
+      const cost = payload?.infrastructureState?.monthly_total_cost || "N/A";
+      return `Infra cost: $${cost}/mo`;
+    }
+    return "Context not available";
+  };
+
+  const filteredRuns = previousRuns.filter(run => {
+    if (!searchQuery) return true;
+    const context = getRunContext(run).toLowerCase();
+    const timestamp = formatTimestamp(run.created_at).toLowerCase();
+    return context.includes(searchQuery.toLowerCase()) ||
+           timestamp.includes(searchQuery.toLowerCase());
+  });
+
+  const clearOutput = () => {
+    setOutput([]);
+    setSelectedRun(null);
+    toast.success("Output cleared");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -309,42 +394,55 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
         </Button>
       </div>
 
-      <Tabs defaultValue="history" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="inputs" className="w-full">
+        <TabsList className={`grid w-full ${isDeveloper ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <TabsTrigger value="inputs">
+            <Eye className="w-4 h-4 mr-2" />
+            Inputs & Run
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="workflow">
+              <Workflow className="w-4 h-4 mr-2" />
+              Workflow
+            </TabsTrigger>
+          )}
           <TabsTrigger value="history">
             <History className="w-4 h-4 mr-2" />
             History
-          </TabsTrigger>
-          <TabsTrigger value="inputs">
-            <Eye className="w-4 h-4 mr-2" />
-            Inputs
-          </TabsTrigger>
-          <TabsTrigger value="workflow">
-            <Workflow className="w-4 h-4 mr-2" />
-            Workflow
-          </TabsTrigger>
-          <TabsTrigger value="run">
-            <Terminal className="w-4 h-4 mr-2" />
-            Run Demo
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="history" className="space-y-4">
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <History className="w-5 h-5 mr-2 text-primary" />
-                Previous Runs
-              </h3>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={loadPreviousRuns}
-                disabled={isLoadingHistory}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingHistory ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center">
+                  <History className="w-5 h-5 mr-2 text-primary" />
+                  Previous Runs
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadPreviousRuns}
+                  disabled={isLoadingHistory}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingHistory ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+
+              {previousRuns.length > 0 && (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search by query or date..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              )}
             </div>
 
             {isLoadingHistory ? (
@@ -357,9 +455,15 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                 <p>No previous runs found.</p>
                 <p className="text-sm">Run the demo to save results here.</p>
               </div>
+            ) : filteredRuns.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No runs match your search.</p>
+                <p className="text-sm">Try a different search term.</p>
+              </div>
             ) : (
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                {previousRuns.map((run) => (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto mt-4">
+                {filteredRuns.map((run) => (
                   <div
                     key={run.id}
                     className={`p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
@@ -367,24 +471,27 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                     }`}
                     onClick={() => loadRun(run)}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{formatTimestamp(run.created_at)}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded text-xs ${
-                              run.execution_mode === 'cloud' ? 'bg-primary/20 text-primary' : 'bg-secondary'
-                            }`}>
-                              {run.execution_mode === 'cloud' ? '☁️ Cloud' : '🖥️ Local'}
-                            </span>
-                            <span>Claude ({run.model_used || CLAUDE_MODEL})</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm line-clamp-2">
+                            {getRunContext(run)}
                           </div>
                         </div>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="w-4 h-4 mr-1" />
+                          Load
+                        </Button>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        Load
-                      </Button>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatTimestamp(run.created_at)}</span>
+                        <span className={`px-1.5 py-0.5 rounded ${
+                          run.execution_mode === 'cloud' ? 'bg-primary/20 text-primary' : 'bg-secondary'
+                        }`}>
+                          {run.execution_mode === 'cloud' ? 'Cloud' : 'Local'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -415,6 +522,14 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                   >
                     <FileText className="w-4 h-4 mr-1" />
                     Formatted
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={clearOutput}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Clear
                   </Button>
                 </div>
               </div>
@@ -455,38 +570,40 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center">
               <Eye className="w-5 h-5 mr-2 text-primary" />
-              Demo Inputs Preview
+              Configure Inputs
             </h3>
-            {getInputPreview(demo.id)}
+            <DynamicDemoInputs
+              demoId={demo.id}
+              onPayloadChange={setDynamicPayload}
+              developerProfileId={developerProfileId}
+            />
           </Card>
-        </TabsContent>
 
-        <TabsContent value="workflow" className="space-y-4">
-          <WorkflowDiagram demoId={demo.id} />
-        </TabsContent>
-
-        <TabsContent value="run" className="space-y-4">
-          <Card className="p-6">
+          {/* AI Copilot Section */}
+          <Card className="p-6 bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/20">
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Runs locally using Claude API via your configured API key.
-              </p>
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-primary" />
+                <p className="text-sm font-medium">
+                  Ask AI Copilot anything about your platform
+                </p>
+              </div>
 
               <Button
                 onClick={runDemo}
                 disabled={isRunning || !apiKey}
-                className="w-full"
+                className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
                 size="lg"
               >
                 {isRunning ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Running...
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    AI is thinking...
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Run Demo
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Ask AI Copilot
                   </>
                 )}
               </Button>
@@ -499,12 +616,13 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
             </div>
           </Card>
 
+          {/* Output Section */}
           {output.length > 0 && (
             <Card className="p-6 border-2 border-primary/20">
               <div className="flex items-center justify-between mb-4 sticky top-0 bg-card z-10 pb-2">
                 <h3 className="text-lg font-semibold flex items-center">
                   <Terminal className="w-5 h-5 mr-2 text-primary" />
-                  Output
+                  {selectedRun ? 'Loaded Output' : 'Latest Output'}
                 </h3>
                 <div className="flex gap-2">
                   <Button
@@ -523,16 +641,24 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
                     <FileText className="w-4 h-4 mr-1" />
                     Formatted
                   </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={clearOutput}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Clear
+                  </Button>
                 </div>
               </div>
-              
+
               {viewMode === "raw" ? (
                 <div className="bg-secondary rounded-lg p-4 font-mono text-sm space-y-1 max-h-[60vh] overflow-y-auto">
                   {output.map((line, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ 
+                      dangerouslySetInnerHTML={{
                         __html: line
                           .replace(/<error>(.*?)<\/error>/g, '<span class="text-destructive font-bold">$1</span>')
                           .replace(/<success>(.*?)<\/success>/g, '<span class="text-success font-bold">$1</span>')
@@ -557,6 +683,12 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
             </Card>
           )}
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="workflow" className="space-y-4">
+            <WorkflowDiagram demoId={demo.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -565,8 +697,11 @@ const DemoRunner = ({ demo, onClose }: DemoRunnerProps) => {
 function generatePromptForDemo(demoId: string, payload: any): string {
   switch (demoId) {
     case "workflow-diagnostic":
-      return `You are a platform engineering diagnostic agent powered by Claude. 
-    
+      return `You are a platform engineering diagnostic agent powered by Claude.
+
+Developer Context:
+${JSON.stringify(payload.developerContext, null, 2)}
+
 A CI/CD workflow has failed with the following error:
 
 ${payload.errorLog}
@@ -574,12 +709,13 @@ ${payload.errorLog}
 Workflow Context:
 ${payload.workflowContext}
 
-Please provide:
-1. Root cause analysis
-2. Step-by-step fix recommendations
+Please provide a diagnosis tailored to the developer's experience level and tech stack:
+1. Root cause analysis (explain at the appropriate technical depth for ${payload.developerContext?.experience_level || 'intermediate'} level)
+2. Step-by-step fix recommendations (specific to ${payload.developerContext?.team || 'their team'} workflows and ${payload.developerContext?.tech_stack?.join(', ') || 'their tech stack'})
 3. Prevention strategies for future occurrences
+4. Relevant documentation or resources
 
-Format your response as structured analysis with clear sections. Do not mention or reference any AI model names like Gemini in your response.`;
+Format your response as structured analysis with clear sections. Tailor the technical depth and terminology to the developer's experience level. Do not mention or reference any AI model names like Gemini in your response.`;
 
     case "release-readiness":
       return `You are a release readiness evaluation agent powered by Claude.
