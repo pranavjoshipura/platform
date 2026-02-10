@@ -609,8 +609,8 @@ const DemoRunner = ({ demo, onClose, userRole = 'admin', developerProfileId }: D
               </Button>
 
               {!apiKey && (
-                <p className="text-xs text-destructive">
-                  ⚠️ No API key found. Set VITE_ANTHROPIC_API_KEY in your .env file.
+                <p className="text-xs text-muted-foreground italic">
+                  ℹ️ Note: This is a demo environment. AI features require API configuration.
                 </p>
               )}
             </div>
