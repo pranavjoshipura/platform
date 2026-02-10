@@ -13,7 +13,7 @@ export default defineConfig(async ({ mode }) => {
   }
 
   return {
-    base: "/", // Root path for GitHub Pages subdomain deployment
+    base: "/platform/", // GitHub Pages deployment path
     server: {
       host: "::",
       port: 8080,
