@@ -13,7 +13,7 @@ export default defineConfig(async ({ mode }) => {
   }
 
   return {
-    base: "/agentic-ai-platformengineering/",
+    base: "/platform/",
     server: {
       host: "::",
       port: 8080,

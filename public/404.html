@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Internal Developer Platform</title>
+  <script>
+    // GitHub Pages SPA redirect
+    // This script takes the current URL and redirects to the base URL with the path as a hash
+    const baseUrl = '/platform/';
+    const currentPath = window.location.pathname.replace(baseUrl, '');
+
+    if (currentPath && currentPath !== '/') {
+      window.location.replace(baseUrl + '#' + currentPath);
+    } else {
+      window.location.replace(baseUrl);
+    }
+  </script>
+</head>
+<body>
+  <div style="text-align: center; padding: 50px; font-family: sans-serif;">
+    <h1>Redirecting...</h1>
+    <p>If you are not redirected automatically, <a href="/platform/">click here</a>.</p>
+  </div>
+</body>
+</html>
