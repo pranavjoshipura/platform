@@ -13,7 +13,7 @@ export default defineConfig(async ({ mode }) => {
   }
 
   return {
-    base: "/platform/",
+    base: "/",
     server: {
       host: "::",
       port: 8080,
